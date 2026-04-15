@@ -68,6 +68,38 @@ This has been integrated with **Tosca** seamlessly. The general approach:
 
 For better reuse, create a reusable test step/function in your framework so your team can use it without changing the structure.
 
+### Example: Tosca Integration
+
+Here's how you can set this up in Tosca:
+
+1. **Store the secret key as an encrypted Configuration Parameter (CP) in Tosca**
+   - Create a CP like `{CP[TOTP_SecretKey]}` and encrypt the value
+   - This ensures the key is never stored in plain text
+
+2. **Create a TBox Execute Program step to run the Python script**
+   - Program: `python`
+   - Arguments: `totp_generator.py`
+   - Set the working directory to where the script is located
+
+3. **Read the output file using a TBox Read File step**
+   - File path: `totp_output.txt`
+   - Buffer the value: `{B[OTP_Value]}`
+
+4. **Enter the OTP in the authentication window**
+   - Use the buffered value `{B[OTP_Value]}` in your Input action on the OTP field
+
+5. **Delete the output file (see cleanup section below)**
+
+6. **Wrap steps 2-5 in a Reusable Test Step Block** so your team can use it anywhere without duplicating the setup
+
+The flow in Tosca looks like:
+
+```
+[Execute Python Script] → [Read totp_output.txt] → [Enter OTP] → [Delete File]
+```
+
+All of this happens in seconds — well within the 30-second TOTP window.
+
 ## Security — Read This Carefully
 
 The secret key is the most sensitive piece of this solution. **Treat it like a password.**
@@ -88,23 +120,40 @@ The secret key is the most sensitive piece of this solution. **Treat it like a p
 
 ### Cleaning Up the OTP File
 
-After your automation reads the OTP, **delete the output file immediately.** And don't just delete it — **empty your recycle bin** as well. The file contains a valid (though time-limited) OTP, and the secret key could potentially be reverse-engineered from patterns if multiple OTPs are collected.
+After your automation reads the OTP, **delete the output file immediately.** Don't just delete it normally — that sends it to the recycle bin where it can still be recovered.
+
+**Option 1: Delete via Python (recommended — bypasses recycle bin)**
 
 ```python
 import os
-
-# After reading the OTP, delete the file
-os.remove("totp_output.txt")
+os.remove("totp_output.txt")  # Permanently deleted, does NOT go to recycle bin
 ```
 
-On Windows, if you want to bypass the recycle bin entirely:
+**Option 2: Delete via command line (bypasses recycle bin)**
 
-```python
-import os
-os.remove("totp_output.txt")  # This permanently deletes, does not go to recycle bin
+```bash
+# Windows
+del /f totp_output.txt
+
+# Linux/Mac
+rm -f totp_output.txt
 ```
 
-> `os.remove()` in Python already bypasses the recycle bin. But if you're manually deleting the file (not through code), make sure to **Shift+Delete** or empty the recycle bin afterwards.
+**Option 3: Delete via Tosca (TBox Execute Program)**
+
+- Program: `cmd`
+- Arguments: `/c del /f "C:\path\to\totp_output.txt"`
+
+**Option 4: Manual deletion**
+
+If you ever delete the file manually (right-click → delete), it goes to the **recycle bin**. Make sure to:
+1. Open Recycle Bin
+2. Find and delete `totp_output.txt` from there, OR
+3. Right-click Recycle Bin → Empty Recycle Bin
+
+Better yet — use **Shift+Delete** to permanently delete without going to recycle bin.
+
+**Why this matters:** The OTP file contains a valid token. While it expires in 30 seconds, leaving multiple OTP files around is a security risk. Make cleanup part of your automation flow, not an afterthought.
 
 ### .gitignore
 
