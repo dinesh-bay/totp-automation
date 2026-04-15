@@ -1,0 +1,7 @@
+totp_output.txt
+*.txt
+!README.md
+__pycache__/
+*.pyc
+.env
+secret_key*
