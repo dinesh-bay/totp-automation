@@ -76,26 +76,31 @@ Here's how you can set this up in Tosca:
    - Create a CP like `{CP[TOTP_SecretKey]}` and encrypt the value
    - This ensures the key is never stored in plain text
 
-2. **Create a TBox Execute Program step to run the Python script**
-   - Program: `python`
-   - Arguments: `totp_generator.py`
-   - Set the working directory to where the script is located
+2. **Run the Python script using TBox Start Program**
+   - Module: `TBox Start Program` (found under TBox Automation Tools → Process Operations)
+   - Path: `python` (or full path like `C:\Python3x\python.exe`)
+   - Arguments: `C:\path\to\totp_generator.py`
 
-3. **Read the output file using a TBox Read File step**
-   - File path: `totp_output.txt`
-   - Buffer the value: `{B[OTP_Value]}`
+3. **Read the OTP from the output file using TBox Read/Create File**
+   - Module: `TBox Read/Create File` (found under TBox Automation Tools → File Operations)
+   - Directory: path where `totp_output.txt` is saved
+   - FileName: `totp_output.txt`
+   - Text: set ActionMode to **Buffer** → `{B[OTP_Value]}`
 
 4. **Enter the OTP in the authentication window**
    - Use the buffered value `{B[OTP_Value]}` in your Input action on the OTP field
 
-5. **Delete the output file (see cleanup section below)**
+5. **Delete the output file using TBox Delete File**
+   - Module: `TBox Delete File` (found under TBox Automation Tools → File Operations)
+   - Directory: path where `totp_output.txt` is saved
+   - FileName: `totp_output.txt`
 
 6. **Wrap steps 2-5 in a Reusable Test Step Block** so your team can use it anywhere without duplicating the setup
 
 The flow in Tosca looks like:
 
 ```
-[Execute Python Script] → [Read totp_output.txt] → [Enter OTP] → [Delete File]
+[TBox Start Program → python] → [TBox Read/Create File → Buffer OTP] → [Enter OTP] → [TBox Delete File]
 ```
 
 All of this happens in seconds — well within the 30-second TOTP window.
